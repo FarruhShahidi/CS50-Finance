@@ -1,1 +1,1 @@
-This is a finance web project that uses Flask, SQL and HTML.
+This is finance web project. The project  uses Flask, SQL and HTML.

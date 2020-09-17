@@ -113,13 +113,47 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
-    return apology("TODO")
+    if request.method == "POST":
+        if not request.form.get("symbol"):
+            # apologize
+            return apology("Enter a stock symbol", 403)
+        #else, use the look up function and return
+        quote = lookup(request.form.get("symbol"))
+
+        return render_template("quoted.html", quote=quote) # write quoted.html.....
+    else:
+        return render_template("quote.html")
+
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Register user"""
-    return apology("TODO")
+
+    if request.method == "POST":
+        if not request.form.get("username"):
+            return apology("Please enter a username", 402)
+        elif not request.form.get("password"):
+            return apology("Please enter a password", 402)
+        elif not request.form.get("confirm_password"):
+            return apology("Please confirm your password", 402)
+        # make sure the password match
+        elif request.form.get("password") != request.form.get("confirm_password"):
+            return apology("Passwords do not match", 402)
+        hash_password = generate_password_hash(request.form.get("password"))
+        # add new user to the datebase
+        row = db.execute("INSERT INTO users (username, hash) VALUES (:username, :hash )",
+        username = request.form.get("username"), hash = hash_password)
+        if not row:
+            return apology("Username already exists", 402)
+        rows = db.execute("SELECT * FROM users WHERE username = :username", username = request.form.get("username"))
+
+        #remember the user
+        session["user_id"] = rows[0]["id"]
+
+        return redirect("/")
+    else:
+        return render_template("register.html")
 
 
 @app.route("/sell", methods=["GET", "POST"])
