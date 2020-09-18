@@ -51,7 +51,41 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+    if request.method == "POST":
+        symb = request.form.get("symbol")
+
+        num_shares = request.form.get("num_shares")
+        if not symb:
+            return apology(" Enter a  symbol", 399)
+        if not lookup(symb):
+            return apology("No such stock exists", 399)
+        if  int(num_shares) <= 0:
+            return apology("Enter  number of shares", 399)
+        #check the price
+        name = lookup(symb)["name"]
+        price_per_share = int(lookup(symb)["price"])
+        # get the cost
+        buy = int(num_shares) * price_per_share
+        # get the current balance
+        balance = db.execute("SELECT cash FROM users WHERE id = :user_id", user_id = session["user_id"])
+        if balance[0]["cash"] < buy:
+            return apology("Not enough money to buy", 399)
+        else:
+            # enter the records to transactions database
+            db.execute("INSERT INTO transactions VALUES (:user_id, :name, :trans_type, :stock_symbol, :price, :num_shares, datetime('now'))"
+            , user_id=session["user_id"], name=name, trans_type="buy", stock_symbol=symb, price=price_per_share, num_shares=num_shares)
+
+            #update the balance in the users database
+
+            db.execute("UPDATE users SET cash =cash - :buy WHERE id = :user_id", buy=buy, user_id=session["user_id"])
+
+            return redirect("/")
+
+
+
+    else:
+         return render_template("buy.html")
+
 
 
 @app.route("/history")
