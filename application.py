@@ -72,7 +72,12 @@ def buy():
             return apology("Not enough money to buy", 399)
         else:
             # enter the records to transactions database
-            db.execute("INSERT INTO transactions VALUES (:user_id, :name, :trans_type, :stock_symbol, :price, :num_shares, datetime('now'))"
+            if db.execute("SELECT num_shares FROM transactions WHERE id=:user_id AND stock_symbol = :stock_symbol",
+            user_id=session["user_id"], stock_symbol=symb):
+                db.execute("UPDATE transactions SET num_shares= num_shares + :num_shares, time=datetime('now'), price=:price WHERE id=:user_id AND stock_symbol=:stock_symbol"
+                , user_id=session["user_id"], stock_symbol=symb, num_shares=num_shares, price=price_per_share)
+            else:
+                db.execute("INSERT INTO transactions VALUES (:user_id, :name, :trans_type, :stock_symbol, :price, :num_shares, datetime('now'))"
             , user_id=session["user_id"], name=name, trans_type="buy", stock_symbol=symb, price=price_per_share, num_shares=num_shares)
 
             #update the balance in the users database
@@ -154,7 +159,7 @@ def quote():
         #else, use the look up function and return
         quote = lookup(request.form.get("symbol"))
 
-        return render_template("quoted.html", quote=quote) # write quoted.html.....
+        return render_template("quoted.html", quote=quote)
     else:
         return render_template("quote.html")
 
@@ -194,7 +199,38 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock"""
-    return apology("TODO")
+
+    if request.method == "POST":
+        # check if the symbol or number of shares is emty
+        if not request.form.get("symbol"):
+            return apology("Enter the stock symbol you want to sell", 398)
+        if not request.form.get("num_shares"):
+            return apology("Enter how many shares you want to sell", 398)
+        #check is you have given stock and number of shares
+        symb = request.form.get("symbol")
+        num_shares = request.form.get("num_shares")
+        get_symb = db.execute("SELECT stock_symbol FROM transactions WHERE id = :user_id", user_id = session["user_id"])
+        if not get_symb:
+            return apology("You do not have this stock", 398)
+        total_shares = db.execute("SELECT num_shares FROM transactions WHERE stock_symbol=:stock_symbol", stock_symbol=symb)
+        if total_shares[0]["num_shares"] < int(num_shares):
+            return apology("You do not have enough shares to sell", 398)
+        else:
+            price_per_share = int(lookup(symb)["price"])
+            sell = int(num_shares) * price_per_share
+            # update the history table
+
+            #update the transactions table
+            db.execute("UPDATE transactions SET num_shares=num_shares-:num_shares WHERE id=:user_id AND stock_symbol=:stock_symbol"
+                , user_id=session["user_id"], stock_symbol=symb, num_shares=num_shares)
+
+            #update the users table
+            db.execute("UPDATE users SET cash=cash+:sell WHERE id = :user_id", sell=sell, user_id=session["user_id"])
+
+            return redirect("/")
+
+    else:
+        return render_template("sell.html")
 
 
 def errorhandler(e):
